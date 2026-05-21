@@ -1,9 +1,12 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { extractTopics } from '@/agents/topicExtractor'
 import { analyzeDecisions } from '@/agents/decisionAnalyzer'
 import { recommendFramework } from '@/agents/frameworkAgent'
 import { generateActions } from '@/agents/actionAgent'
 import { findSimilarMeetings } from '@/agents/memoryAgent'
+import { analyzeMeetingUnified } from '@/agents/meetingOrchestrator'
+import { sanitizeList } from '@/services/outputGuard'
+import { buildPriorities } from '@/utils/priorityEngine'
 import type { AgentPipelineStep, MeetingAnalysis, SimilarMeeting } from '@/types/meeting'
 import type { MeetingRecord } from '@/types/meeting'
 
@@ -19,15 +22,49 @@ export function useDecisionEngine() {
   const running = ref(false)
   const pipeline = ref<AgentPipelineStep[]>(PIPELINE_STEPS.map((s) => ({ ...s })))
   const similarMeetings = ref<SimilarMeeting[]>([])
+  const currentStepLabel = ref('')
   const useOfflineMode = ref(!import.meta.env.VITE_MISTRAL_API_KEY)
+
+  const activeStep = computed(() =>
+    pipeline.value.find((s) => s.status === 'running'),
+  )
 
   function setStepStatus(id: string, status: AgentPipelineStep['status']) {
     const step = pipeline.value.find((s) => s.id === id)
-    if (step) step.status = status
+    if (step) {
+      step.status = status
+      if (status === 'running') currentStepLabel.value = step.label
+    }
+  }
+
+  function setAllDone() {
+    pipeline.value.forEach((s) => {
+      s.status = 'done'
+    })
+    currentStepLabel.value = '완료'
   }
 
   function resetPipeline() {
     pipeline.value = PIPELINE_STEPS.map((s) => ({ ...s, status: 'idle' }))
+    currentStepLabel.value = ''
+  }
+
+  function finalizeAnalysis(
+    keywords: string[],
+    partial: Omit<MeetingAnalysis, 'priorities'> & { priorities?: MeetingAnalysis['priorities'] },
+  ): MeetingAnalysis {
+    const topics = sanitizeList(partial.topics, keywords, [], 'relaxed')
+    const decisions = sanitizeList(partial.decisions, keywords, topics)
+    const actions = sanitizeList(partial.actions, keywords, topics)
+
+    return {
+      topics,
+      decisions,
+      framework: partial.framework,
+      frameworkReason: partial.frameworkReason,
+      actions,
+      priorities: partial.priorities ?? buildPriorities(keywords, topics),
+    }
   }
 
   async function runPipeline(
@@ -40,6 +77,16 @@ export function useDecisionEngine() {
 
     try {
       setStepStatus('topic', 'running')
+
+      const unified = await analyzeMeetingUnified(keywords)
+      if (unified) {
+        setAllDone()
+        setStepStatus('memory', 'running')
+        similarMeetings.value = findSimilarMeetings(keywords, history)
+        setStepStatus('memory', 'done')
+        return unified
+      }
+
       const topics = await extractTopics(keywords)
       setStepStatus('topic', 'done')
 
@@ -59,13 +106,13 @@ export function useDecisionEngine() {
       similarMeetings.value = findSimilarMeetings(keywords, history)
       setStepStatus('memory', 'done')
 
-      return {
+      return finalizeAnalysis(keywords, {
         topics,
         decisions,
         framework,
         frameworkReason: reason,
         actions,
-      }
+      })
     } catch (error) {
       const failed = pipeline.value.find((s) => s.status === 'running')
       if (failed) failed.status = 'error'
@@ -80,6 +127,8 @@ export function useDecisionEngine() {
     pipeline,
     similarMeetings,
     useOfflineMode,
+    currentStepLabel,
+    activeStep,
     runPipeline,
     resetPipeline,
   }

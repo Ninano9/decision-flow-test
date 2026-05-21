@@ -1,4 +1,6 @@
 import { chatCompletion, SYSTEM_PROMPT } from '@/services/mistralService'
+import { sanitizeList } from '@/services/outputGuard'
+import { STRICT_AGENT_RULES } from '@/agents/promptConstants'
 
 export async function generateActions(
   keywords: string[],
@@ -11,7 +13,7 @@ export async function generateActions(
 
   const content = await chatCompletion({
     messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: `${SYSTEM_PROMPT}\n${STRICT_AGENT_RULES}` },
       {
         role: 'user',
         content: `입력 내용만 사용해 실행 가능한 다음 액션 3~6개를 생성하세요. 새 기술 제안 금지.
@@ -31,7 +33,7 @@ ${decisions.join('\n')}
     ],
   })
 
-  return parseActions(content, keywords)
+  return sanitizeList(parseActions(content, keywords), keywords, topics)
 }
 
 function parseActions(content: string, keywords: string[]): string[] {

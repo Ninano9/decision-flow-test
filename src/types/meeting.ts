@@ -3,12 +3,21 @@ export interface MeetingKeyword {
   text: string
 }
 
+export type PriorityLevel = 'high' | 'medium' | 'low'
+
+export interface PriorityItem {
+  label: string
+  level: PriorityLevel
+  reason: string
+}
+
 export interface MeetingAnalysis {
   topics: string[]
   decisions: string[]
   framework: string
   frameworkReason: string
   actions: string[]
+  priorities: PriorityItem[]
 }
 
 export interface SimilarMeeting {

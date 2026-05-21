@@ -35,7 +35,14 @@ ${topics.join('\n')}
     ],
   })
 
-  return parseFramework(content, keywords)
+  const parsed = parseFramework(content, keywords)
+  const ruleBased = fallbackFramework(keywords)
+
+  if (/장애|긴급|불만|느림|지연|사용자/.test(keywords.join(' ').toLowerCase())) {
+    return ruleBased
+  }
+
+  return parsed
 }
 
 function parseFramework(content: string, keywords: string[]): FrameworkRecommendation {
@@ -61,7 +68,7 @@ function parseFramework(content: string, keywords: string[]): FrameworkRecommend
 function fallbackFramework(keywords: string[]): FrameworkRecommendation {
   const text = keywords.join(' ').toLowerCase()
 
-  if (/장애|긴급|영향|사용자 불만/.test(text)) {
+  if (/장애|긴급|영향|불만|느림|느린|지연|사용자/.test(text)) {
     return {
       framework: '긴급도 × 영향도',
       reason: '긴급·영향 키워드가 포함되어 긴급도×영향도 매트릭스가 적합합니다.',

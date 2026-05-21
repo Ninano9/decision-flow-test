@@ -1,4 +1,6 @@
 import { chatCompletion, SYSTEM_PROMPT } from '@/services/mistralService'
+import { sanitizeList } from '@/services/outputGuard'
+import { STRICT_AGENT_RULES } from '@/agents/promptConstants'
 
 export async function extractTopics(keywords: string[]): Promise<string[]> {
   if (!import.meta.env.VITE_MISTRAL_API_KEY) {
@@ -9,7 +11,7 @@ export async function extractTopics(keywords: string[]): Promise<string[]> {
 
   const content = await chatCompletion({
     messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: `${SYSTEM_PROMPT}\n${STRICT_AGENT_RULES}` },
       {
         role: 'user',
         content: `다음 회의 키워드에서 핵심 논의 주제만 3~5개 bullet로 추출하세요. 입력 외 내용 금지.
@@ -23,7 +25,7 @@ ${input}
     ],
   })
 
-  return parseTopicsResponse(content, keywords)
+  return sanitizeList(parseTopicsResponse(content, keywords), keywords, [], 'relaxed')
 }
 
 function parseTopicsResponse(content: string, keywords: string[]): string[] {

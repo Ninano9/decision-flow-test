@@ -13,7 +13,7 @@ function onEnter() {
 
 function onPaste(event: ClipboardEvent) {
   const text = event.clipboardData?.getData('text')
-  if (text?.includes('\n')) {
+  if (text?.includes('\n') || text?.includes(',')) {
     event.preventDefault()
     store.addKeywordsFromText(text)
   }
@@ -22,12 +22,35 @@ function onPaste(event: ClipboardEvent) {
 
 <template>
   <section class="rounded-2xl border border-slate-700/80 bg-slate-900/80 p-5 shadow-lg">
-    <header class="mb-4">
-      <h2 class="text-lg font-semibold text-white">회의 키워드 입력</h2>
-      <p class="mt-1 text-sm text-slate-400">
-        Enter로 태그 생성 · 여러 줄 붙여넣기 지원
-      </p>
+    <header class="mb-4 flex flex-wrap items-start justify-between gap-2">
+      <div>
+        <h2 class="text-lg font-semibold text-white">회의 키워드 입력</h2>
+        <p class="mt-1 text-sm text-slate-400">
+          Enter로 태그 생성 · 콤마/여러 줄 붙여넣기 지원
+        </p>
+      </div>
+      <button
+        type="button"
+        class="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+        @click="store.loadSampleKeywords"
+      >
+        예시 불러오기
+      </button>
     </header>
+
+    <p
+      v-if="store.termMappings.length"
+      class="mb-2 text-xs text-slate-500"
+    >
+      OpenStack 용어:
+      <span
+        v-for="m in store.termMappings"
+        :key="m.original"
+        class="mr-2 text-brand-100/90"
+      >
+        {{ m.original }} → {{ m.standard }}
+      </span>
+    </p>
 
     <div
       class="mb-3 flex min-h-[120px] flex-wrap gap-2 rounded-xl border border-slate-600 bg-slate-950/60 p-3"
@@ -79,9 +102,16 @@ function onPaste(event: ClipboardEvent) {
       </button>
     </div>
 
+    <p
+      v-if="store.running && store.currentStepLabel"
+      class="mt-2 text-xs text-brand-200/90"
+    >
+      Agent 진행: {{ store.currentStepLabel }}
+    </p>
+
     <p v-if="store.error" class="mt-3 text-sm text-red-400">{{ store.error }}</p>
     <p v-if="store.useOfflineMode" class="mt-2 text-xs text-amber-400/90">
-      API 키 없음: 규칙 기반 오프라인 분석 모드 (Mistral 연동 시 .env에 VITE_MISTRAL_API_KEY 설정)
+      API 키 없음: 규칙 기반 오프라인 분석 모드
     </p>
   </section>
 </template>

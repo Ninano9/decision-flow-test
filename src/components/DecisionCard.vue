@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { useMeetingStore } from '@/stores/meetingStore'
+
 defineProps<{
   decisions: string[]
 }>()
+
+const store = useMeetingStore()
 </script>
 
 <template>
@@ -13,10 +17,17 @@ defineProps<{
       <li
         v-for="(item, i) in decisions"
         :key="i"
-        class="flex items-start gap-2 text-sm text-slate-200"
+        class="flex items-start gap-2 text-sm"
+        :class="store.checkedDecisions[i] ? 'text-slate-500 line-through' : 'text-slate-200'"
       >
-        <span class="mt-0.5 text-amber-400">□</span>
-        {{ item }}
+        <input
+          :id="`decision-${i}`"
+          type="checkbox"
+          class="mt-1 h-4 w-4 rounded border-slate-500 bg-slate-900 text-amber-500 focus:ring-amber-500/40"
+          :checked="!!store.checkedDecisions[i]"
+          @change="store.toggleDecision(i)"
+        />
+        <label :for="`decision-${i}`" class="cursor-pointer flex-1">{{ item }}</label>
       </li>
     </ul>
   </article>

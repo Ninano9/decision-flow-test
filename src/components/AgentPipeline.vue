@@ -57,7 +57,7 @@ function nodeBg(status: AgentPipelineStep['status']) {
 </script>
 
 <template>
-  <section class="h-[200px] overflow-hidden rounded-2xl border border-slate-700 bg-slate-950">
+  <section class="h-[260px] overflow-hidden rounded-2xl border border-slate-700 bg-slate-950">
     <VueFlow
       :nodes="nodes"
       :edges="edges"

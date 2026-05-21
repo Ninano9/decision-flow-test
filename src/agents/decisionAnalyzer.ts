@@ -1,4 +1,6 @@
 import { chatCompletion, SYSTEM_PROMPT } from '@/services/mistralService'
+import { sanitizeList } from '@/services/outputGuard'
+import { STRICT_AGENT_RULES } from '@/agents/promptConstants'
 
 export async function analyzeDecisions(
   keywords: string[],
@@ -10,7 +12,7 @@ export async function analyzeDecisions(
 
   const content = await chatCompletion({
     messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: `${SYSTEM_PROMPT}\n${STRICT_AGENT_RULES}` },
       {
         role: 'user',
         content: `키워드와 핵심 논의를 바탕으로 결정이 필요한 항목만 3~6개 생성하세요. 새 해결책 금지.
@@ -27,7 +29,8 @@ ${topics.join('\n')}
     ],
   })
 
-  return parseListResponse(content, 'decisions', () => fallbackDecisions(keywords, topics))
+  const raw = parseListResponse(content, 'decisions', () => fallbackDecisions(keywords, topics))
+  return sanitizeList(raw, keywords, topics)
 }
 
 function parseListResponse(
