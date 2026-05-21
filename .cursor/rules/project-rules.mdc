@@ -1,0 +1,17 @@
+---
+description: DecisionFlow 프로젝트 개발 규칙
+globs: ["**/*"]
+---
+
+# DecisionFlow Rules
+
+1. Vue3 Composition API 사용
+2. script setup 사용
+3. TypeScript 사용
+4. Pinia 사용
+5. Tailwind 사용
+6. 컴포넌트 최대 200줄
+7. 비즈니스 로직 composable 분리
+8. API 직접 호출 금지 — services 레이어 사용
+9. Agent 로직 agents/ 폴더에 분리
+10. 상태는 store 관리
