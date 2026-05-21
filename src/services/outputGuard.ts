@@ -64,11 +64,6 @@ function simplifyLine(text: string): string {
   return line
 }
 
-function fallbackLine(keywords: string[], index: number): string {
-  const kw = keywords[index % keywords.length] ?? '이슈'
-  return `${kw} 관련 확인`
-}
-
 function overlapsContext(text: string, keywords: string[], topics: string[]): boolean {
   return keywordOverlap(text, keywords) || keywordOverlap(text, topics)
 }
@@ -103,8 +98,5 @@ export function sanitizeList(
 
   if (unique.length >= 2) return unique.slice(0, 6)
 
-  return keywords
-    .slice(0, 5)
-    .map((kw, i) => fallbackLine([kw], i))
-    .filter((v, i, arr) => arr.indexOf(v) === i)
+  return []
 }

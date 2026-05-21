@@ -1,9 +1,11 @@
 import { chatCompletion, SYSTEM_PROMPT } from '@/services/mistralService'
 import { sanitizeList } from '@/services/outputGuard'
+import { refineActions } from '@/utils/actionPlanner'
+import { refineDecisions, refineTopics } from '@/utils/meetingContentPlanner'
 import { buildPriorities } from '@/utils/priorityEngine'
 import { recommendFramework } from '@/agents/frameworkAgent'
 import type { MeetingAnalysis, PriorityItem } from '@/types/meeting'
-import { STRICT_AGENT_RULES } from '@/agents/promptConstants'
+import { STRICT_AGENT_RULES, ACTION_PROMPT_RULES } from '@/agents/promptConstants'
 
 interface UnifiedResponse {
   topics?: string[]
@@ -22,21 +24,21 @@ export async function analyzeMeetingUnified(
   try {
     const content = await chatCompletion({
       messages: [
-        { role: 'system', content: `${SYSTEM_PROMPT}\n${STRICT_AGENT_RULES}` },
+        { role: 'system', content: `${SYSTEM_PROMPT}\n${STRICT_AGENT_RULES}\n${ACTION_PROMPT_RULES}` },
         {
           role: 'user',
-          content: `다음 회의 키워드만 사용해 분석하세요. 입력에 없는 단어 사용 금지.
+          content: `회의 키워드로 분석하세요. 액션은 OpenStack 운영자가 즉시 수행할 구체 단계로 작성 (~관련 확인 금지).
 
 키워드:
 ${keywords.join('\n')}
 
-JSON만 출력:
+JSON만:
 {
   "topics":["핵심논의1"],
   "decisions":["결정항목1"],
   "framework":"긴급도 × 영향도",
   "frameworkReason":"한 줄",
-  "actions":["액션1"],
+  "actions":["nova-compute 로그에서 spawn 지연 구간 측정"],
   "priorities":[{"label":"항목","level":"high","reason":"이유"}]
 }`,
         },
@@ -49,9 +51,20 @@ JSON만 출력:
     if (!parsed) return null
 
     const keywordFramework = await recommendFramework(keywords, parsed.topics)
-    const topics = sanitizeList(parsed.topics, keywords, [], 'relaxed')
-    const decisions = sanitizeList(parsed.decisions, keywords, topics)
-    const actions = sanitizeList(parsed.actions, keywords, topics)
+    const topics = refineTopics(
+      sanitizeList(parsed.topics, keywords, [], 'relaxed'),
+      keywords,
+    )
+    const decisions = refineDecisions(
+      sanitizeList(parsed.decisions, keywords, topics, 'relaxed'),
+      keywords,
+      topics,
+    )
+    const actions = refineActions(
+      sanitizeList(parsed.actions, keywords, topics, 'relaxed'),
+      keywords,
+      topics,
+    )
 
     const priorities: PriorityItem[] =
       parsed.priorities.length > 0
@@ -59,11 +72,11 @@ JSON만 출력:
         : buildPriorities(keywords, topics)
 
     return {
-      topics: topics.length ? topics : keywords.slice(0, 3),
-      decisions: decisions.length ? decisions : keywords.map((k) => `${k} 결정 필요`),
+      topics: topics.length ? topics : refineTopics([], keywords),
+      decisions: decisions.length ? decisions : refineDecisions([], keywords, topics),
       framework: keywordFramework.framework,
       frameworkReason: keywordFramework.reason,
-      actions: actions.length ? actions : keywords.map((k) => `${k} 관련 확인`),
+      actions: actions.length ? actions : refineActions([], keywords, topics),
       priorities,
     }
   } catch {

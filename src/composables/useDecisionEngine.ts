@@ -6,6 +6,8 @@ import { generateActions } from '@/agents/actionAgent'
 import { findSimilarMeetings } from '@/agents/memoryAgent'
 import { analyzeMeetingUnified } from '@/agents/meetingOrchestrator'
 import { sanitizeList } from '@/services/outputGuard'
+import { refineActions } from '@/utils/actionPlanner'
+import { refineDecisions, refineTopics } from '@/utils/meetingContentPlanner'
 import { buildPriorities } from '@/utils/priorityEngine'
 import type { AgentPipelineStep, MeetingAnalysis, SimilarMeeting } from '@/types/meeting'
 import type { MeetingRecord } from '@/types/meeting'
@@ -53,16 +55,27 @@ export function useDecisionEngine() {
     keywords: string[],
     partial: Omit<MeetingAnalysis, 'priorities'> & { priorities?: MeetingAnalysis['priorities'] },
   ): MeetingAnalysis {
-    const topics = sanitizeList(partial.topics, keywords, [], 'relaxed')
-    const decisions = sanitizeList(partial.decisions, keywords, topics)
-    const actions = sanitizeList(partial.actions, keywords, topics)
+    const topics = refineTopics(
+      sanitizeList(partial.topics, keywords, [], 'relaxed'),
+      keywords,
+    )
+    const decisions = refineDecisions(
+      sanitizeList(partial.decisions, keywords, topics, 'relaxed'),
+      keywords,
+      topics,
+    )
+    const actions = refineActions(
+      sanitizeList(partial.actions, keywords, topics, 'relaxed'),
+      keywords,
+      topics,
+    )
 
     return {
       topics,
       decisions,
       framework: partial.framework,
       frameworkReason: partial.frameworkReason,
-      actions,
+      actions: actions.length ? actions : refineActions([], keywords, topics),
       priorities: partial.priorities ?? buildPriorities(keywords, topics),
     }
   }
