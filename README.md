@@ -7,10 +7,8 @@
 ## 기능
 
 - 회의 키워드 입력 (태그, 복수 줄 붙여넣기)
-- Harness 기반 5-Agent 파이프라인
+- Harness 기반 4-Agent 파이프라인
 - Mistral API 연동 (오프라인 규칙 기반 폴백 지원)
-- IndexedDB + LocalStorage 회의 히스토리
-- 유사 회의 탐지 (Memory Agent)
 - Vue Flow Agent 파이프라인 시각화
 
 ## 기술 스택
@@ -18,7 +16,6 @@
 - Vue 3 + TypeScript + Vite
 - Pinia + Tailwind CSS v4
 - Mistral API
-- IndexedDB (idb)
 - Vue Flow
 - Netlify 배포
 
@@ -37,7 +34,6 @@ npm run dev
 2. Decision Analyzer — 결정 항목 생성
 3. Framework Recommender — 의사결정 방식 추천
 4. Action Generator — 액션 아이템 생성
-5. Memory Agent — 과거 회의 유사도
 
 ## 배포
 

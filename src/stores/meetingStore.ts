@@ -1,11 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { MeetingAnalysis, MeetingKeyword, MeetingRecord } from '@/types/meeting'
+import type { MeetingAnalysis, MeetingKeyword } from '@/types/meeting'
 import { useDecisionEngine } from '@/composables/useDecisionEngine'
-import { useMeetingHistory } from '@/composables/useMeetingHistory'
 import { useToast } from '@/composables/useToast'
-import { findSimilarMeetings } from '@/agents/memoryAgent'
-import { buildPriorities } from '@/utils/priorityEngine'
 import { normalizeOpenStackTerms, type TermMapping } from '@/utils/openstackTerms'
 
 function createId(): string {
@@ -15,23 +12,13 @@ function createId(): string {
 export const useMeetingStore = defineStore('meeting', () => {
   const keywords = ref<MeetingKeyword[]>([])
   const analysis = ref<MeetingAnalysis | null>(null)
-  const history = ref<MeetingRecord[]>([])
   const error = ref<string | null>(null)
-  const meetingTitle = ref('')
-  const meetingDecision = ref('')
   const checkedDecisions = ref<Record<number, boolean>>({})
   const termMappings = ref<TermMapping[]>([])
   const scrollToResults = ref(false)
 
-  const {
-    running,
-    pipeline,
-    similarMeetings,
-    useOfflineMode,
-    currentStepLabel,
-    runPipeline,
-  } = useDecisionEngine()
-  const { saveMeeting, getAllMeetings, deleteMeeting } = useMeetingHistory()
+  const { running, pipeline, useOfflineMode, currentStepLabel, runPipeline } =
+    useDecisionEngine()
   const toast = useToast()
 
   const keywordTexts = computed(() => keywords.value.map((k) => k.text))
@@ -68,7 +55,6 @@ export const useMeetingStore = defineStore('meeting', () => {
     error.value = null
     checkedDecisions.value = {}
     termMappings.value = []
-    meetingTitle.value = ''
   }
 
   function toggleDecision(index: number) {
@@ -85,10 +71,7 @@ export const useMeetingStore = defineStore('meeting', () => {
     checkedDecisions.value = {}
 
     try {
-      analysis.value = await runPipeline(keywordTexts.value, history.value)
-      if (!meetingTitle.value) {
-        meetingTitle.value = keywordTexts.value.slice(0, 2).join(' · ')
-      }
+      analysis.value = await runPipeline(keywordTexts.value)
       scrollToResults.value = true
     } catch (e) {
       const msg = e instanceof Error ? e.message : '분석 중 오류가 발생했습니다.'
@@ -100,8 +83,10 @@ export const useMeetingStore = defineStore('meeting', () => {
   function buildSummaryText(): string {
     if (!analysis.value) return ''
     const a = analysis.value
-    const lines = [
-      `# ${meetingTitle.value || '회의'}`,
+    const title = keywordTexts.value.slice(0, 2).join(' · ') || '회의'
+
+    return [
+      `# ${title}`,
       '',
       '## 키워드',
       keywordTexts.value.map((k) => `- ${k}`).join('\n'),
@@ -120,11 +105,7 @@ export const useMeetingStore = defineStore('meeting', () => {
       '',
       '## 액션 아이템',
       ...a.actions.map((act) => `- [ ] ${act}`),
-    ]
-    if (meetingDecision.value) {
-      lines.push('', '## 이번 회의 결정', meetingDecision.value)
-    }
-    return lines.join('\n')
+    ].join('\n')
   }
 
   async function copySummary() {
@@ -134,51 +115,6 @@ export const useMeetingStore = defineStore('meeting', () => {
     toast.show('회의 요약이 클립보드에 복사되었습니다.')
   }
 
-  async function saveCurrentMeeting() {
-    if (!analysis.value) return
-
-    const record: MeetingRecord = {
-      id: createId(),
-      title: meetingTitle.value || keywordTexts.value.join(', '),
-      keywords: [...keywordTexts.value],
-      analysis: { ...analysis.value },
-      createdAt: new Date().toISOString(),
-      decision: meetingDecision.value || undefined,
-    }
-
-    await saveMeeting(record)
-    await loadHistory()
-    toast.show('회의가 히스토리에 저장되었습니다.')
-  }
-
-  async function loadHistory() {
-    history.value = await getAllMeetings()
-  }
-
-  async function removeFromHistory(id: string) {
-    if (!confirm('이 회의 기록을 삭제할까요?')) return
-    await deleteMeeting(id)
-    await loadHistory()
-    toast.show('회의 기록이 삭제되었습니다.')
-  }
-
-  function loadMeeting(record: MeetingRecord) {
-    keywords.value = record.keywords.map((text) => ({ id: createId(), text }))
-    analysis.value = {
-      ...record.analysis,
-      priorities:
-        record.analysis.priorities ??
-        buildPriorities(record.keywords, record.analysis.topics),
-    }
-    meetingTitle.value = record.title
-    meetingDecision.value = record.decision ?? ''
-    checkedDecisions.value = {}
-    termMappings.value = normalizeOpenStackTerms(record.keywords)
-    scrollToResults.value = true
-    similarMeetings.value = findSimilarMeetings(keywordTexts.value, history.value)
-    toast.show('저장된 회의를 불러왔습니다.')
-  }
-
   function acknowledgeScroll() {
     scrollToResults.value = false
   }
@@ -186,16 +122,12 @@ export const useMeetingStore = defineStore('meeting', () => {
   return {
     keywords,
     analysis,
-    history,
     error,
-    meetingTitle,
-    meetingDecision,
     checkedDecisions,
     termMappings,
     scrollToResults,
     running,
     pipeline,
-    similarMeetings,
     useOfflineMode,
     currentStepLabel,
     keywordTexts,
@@ -210,10 +142,6 @@ export const useMeetingStore = defineStore('meeting', () => {
     toggleDecision,
     analyze,
     copySummary,
-    saveCurrentMeeting,
-    loadHistory,
-    removeFromHistory,
-    loadMeeting,
     acknowledgeScroll,
   }
 })

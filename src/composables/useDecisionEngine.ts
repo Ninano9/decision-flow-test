@@ -3,27 +3,23 @@ import { extractTopics } from '@/agents/topicExtractor'
 import { analyzeDecisions } from '@/agents/decisionAnalyzer'
 import { recommendFramework } from '@/agents/frameworkAgent'
 import { generateActions } from '@/agents/actionAgent'
-import { findSimilarMeetings } from '@/agents/memoryAgent'
 import { analyzeMeetingUnified } from '@/agents/meetingOrchestrator'
 import { sanitizeList } from '@/services/outputGuard'
 import { refineActions } from '@/utils/actionPlanner'
 import { refineDecisions, refineTopics } from '@/utils/meetingContentPlanner'
 import { buildPriorities } from '@/utils/priorityEngine'
-import type { AgentPipelineStep, MeetingAnalysis, SimilarMeeting } from '@/types/meeting'
-import type { MeetingRecord } from '@/types/meeting'
+import type { AgentPipelineStep, MeetingAnalysis } from '@/types/meeting'
 
 const PIPELINE_STEPS: AgentPipelineStep[] = [
   { id: 'topic', label: 'Topic Extractor', status: 'idle' },
   { id: 'decision', label: 'Decision Analyzer', status: 'idle' },
   { id: 'framework', label: 'Framework Recommender', status: 'idle' },
   { id: 'action', label: 'Action Generator', status: 'idle' },
-  { id: 'memory', label: 'Memory Agent', status: 'idle' },
 ]
 
 export function useDecisionEngine() {
   const running = ref(false)
   const pipeline = ref<AgentPipelineStep[]>(PIPELINE_STEPS.map((s) => ({ ...s })))
-  const similarMeetings = ref<SimilarMeeting[]>([])
   const currentStepLabel = ref('')
   const useOfflineMode = ref(!import.meta.env.VITE_MISTRAL_API_KEY)
 
@@ -80,13 +76,9 @@ export function useDecisionEngine() {
     }
   }
 
-  async function runPipeline(
-    keywords: string[],
-    history: MeetingRecord[] = [],
-  ): Promise<MeetingAnalysis> {
+  async function runPipeline(keywords: string[]): Promise<MeetingAnalysis> {
     running.value = true
     resetPipeline()
-    similarMeetings.value = []
 
     try {
       setStepStatus('topic', 'running')
@@ -94,9 +86,6 @@ export function useDecisionEngine() {
       const unified = await analyzeMeetingUnified(keywords)
       if (unified) {
         setAllDone()
-        setStepStatus('memory', 'running')
-        similarMeetings.value = findSimilarMeetings(keywords, history)
-        setStepStatus('memory', 'done')
         return unified
       }
 
@@ -114,10 +103,6 @@ export function useDecisionEngine() {
       setStepStatus('action', 'running')
       const actions = await generateActions(keywords, topics, decisions)
       setStepStatus('action', 'done')
-
-      setStepStatus('memory', 'running')
-      similarMeetings.value = findSimilarMeetings(keywords, history)
-      setStepStatus('memory', 'done')
 
       return finalizeAnalysis(keywords, {
         topics,
@@ -138,7 +123,6 @@ export function useDecisionEngine() {
   return {
     running,
     pipeline,
-    similarMeetings,
     useOfflineMode,
     currentStepLabel,
     activeStep,

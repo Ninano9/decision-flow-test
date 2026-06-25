@@ -20,24 +20,6 @@ export interface MeetingAnalysis {
   priorities: PriorityItem[]
 }
 
-export interface SimilarMeeting {
-  id: string
-  title: string
-  date: string
-  similarity: number
-  topics: string[]
-  decision?: string
-}
-
-export interface MeetingRecord {
-  id: string
-  title: string
-  keywords: string[]
-  analysis: MeetingAnalysis
-  createdAt: string
-  decision?: string
-}
-
 export type DecisionFramework =
   | '긴급도 × 영향도'
   | '비용 × 효과'
