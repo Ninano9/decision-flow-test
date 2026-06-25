@@ -1,25 +1,21 @@
-import { chatCompletion, SYSTEM_PROMPT } from '@/services/mistralService'
-import { STRICT_AGENT_RULES, ACTION_PROMPT_RULES } from '@/agents/promptConstants'
-import { refineActions } from '@/utils/actionPlanner'
+import { chatCompletion, SYSTEM_PROMPT, hasMistralKey } from '@/services/mistralService'
+import { ANALYSIS_PROMPT_RULES } from '@/agents/promptConstants'
+import { fallbackActions, pickActions } from '@/utils/meetingContentPlanner'
 
 export async function generateActions(
   keywords: string[],
   topics: string[],
   decisions: string[],
 ): Promise<string[]> {
-  const concrete = () => refineActions([], keywords, topics)
-
-  if (!import.meta.env.VITE_MISTRAL_API_KEY) {
-    return concrete()
-  }
+  if (!hasMistralKey()) return fallbackActions(keywords)
 
   try {
     const content = await chatCompletion({
       messages: [
-        { role: 'system', content: `${SYSTEM_PROMPT}\n${STRICT_AGENT_RULES}\n${ACTION_PROMPT_RULES}` },
+        { role: 'system', content: `${SYSTEM_PROMPT}\n${ANALYSIS_PROMPT_RULES}` },
         {
           role: 'user',
-          content: `키워드·논의·결정 항목을 바탕으로 실행 가능한 OpenStack 운영 액션 4~6개를 작성하세요.
+          content: `키워드 맥락에 맞는 실행 가능한 다음 액션 4~6개를 작성하세요.
 
 키워드:
 ${keywords.join('\n')}
@@ -31,16 +27,15 @@ ${topics.join('\n')}
 ${decisions.join('\n')}
 
 JSON만:
-{"actions":["nova-compute 로그에서 spawn 단계별 소요 시간 측정", "..."]}`,
+{"actions":["액션1","액션2"]}`,
         },
       ],
-      temperature: 0.25,
+      temperature: 0.4,
     })
 
-    const raw = parseActions(content)
-    return refineActions(raw, keywords, topics)
+    return pickActions(parseActions(content), keywords)
   } catch {
-    return concrete()
+    return fallbackActions(keywords)
   }
 }
 
@@ -58,6 +53,6 @@ function parseActions(content: string): string[] {
   return content
     .split('\n')
     .map((l) => l.replace(/^[-*•□\d.]+\s*/, '').trim())
-    .filter((l) => l.length > 10)
+    .filter((l) => l.length > 5)
     .slice(0, 6)
 }

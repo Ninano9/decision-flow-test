@@ -1,21 +1,17 @@
 const MISTRAL_API_URL = 'https://api.mistral.ai/v1/chat/completions'
 const DEFAULT_MODEL = 'mistral-small-latest'
 
-export const SYSTEM_PROMPT = `너는 회의 의사결정 보조 시스템이다.
+export const SYSTEM_PROMPT = `너는 회의 의사결정 보조 AI다.
+
+역할:
+1. 입력 키워드의 맥락(업무, 기술, 일정, 메뉴 선택, 조직 이슈 등)을 먼저 파악한다
+2. 그 맥락에 맞는 핵심 논의, 결정 항목, 우선순위, 의사결정 방식, 실행 액션을 제안한다
+3. 입력과 무관한 다른 도메인 용어를 억지로 끼워 넣지 않는다 (예: 점심 메뉴 논의에 서버/VM 용어 사용 금지)
 
 규칙:
-1. 새로운 해결책을 생성하지 않는다
-2. 입력된 내용만 사용한다
-3. 회의를 확장하지 않는다
-4. 핵심만 정리한다
-
-반드시 아래 형식으로 출력한다
-
-출력:
-[핵심 논의]
-[결정 항목]
-[추천 의사결정 방식]
-[액션 아이템]`
+- 구체적이고 실행 가능하게 작성한다
+- "~관련 확인" 같은 모호한 한 줄은 쓰지 않는다
+- 한국어로 작성한다`
 
 export interface MistralMessage {
   role: 'system' | 'user' | 'assistant'
@@ -44,8 +40,8 @@ export async function chatCompletion(options: MistralChatOptions): Promise<strin
     body: JSON.stringify({
       model: DEFAULT_MODEL,
       messages: options.messages,
-      temperature: options.temperature ?? 0.2,
-      max_tokens: options.maxTokens ?? 1024,
+      temperature: options.temperature ?? 0.4,
+      max_tokens: options.maxTokens ?? 1200,
     }),
   })
 
@@ -59,4 +55,8 @@ export async function chatCompletion(options: MistralChatOptions): Promise<strin
   }
 
   return data.choices?.[0]?.message?.content?.trim() ?? ''
+}
+
+export function hasMistralKey(): boolean {
+  return Boolean(import.meta.env.VITE_MISTRAL_API_KEY)
 }

@@ -28,13 +28,13 @@ watch(
   <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
     <header class="mb-10 text-center">
       <p class="text-sm font-medium uppercase tracking-widest text-brand-100/80">
-        OpenStack 회의 의사결정 보조
+        회의 의사결정 보조 AI
       </p>
       <h1 class="mt-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">
         DecisionFlow
       </h1>
       <p class="mx-auto mt-3 max-w-2xl text-slate-400">
-        회의 중 키워드만으로 핵심 논의·결정·우선순위·의사결정 방식·액션을 즉시 정리합니다.
+        AI가 입력 키워드 맥락을 파악해 논의·결정·우선순위·의사결정 방식·액션을 제안합니다.
       </p>
     </header>
 

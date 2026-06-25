@@ -3,7 +3,6 @@ import { ref, computed } from 'vue'
 import type { MeetingAnalysis, MeetingKeyword } from '@/types/meeting'
 import { useDecisionEngine } from '@/composables/useDecisionEngine'
 import { useToast } from '@/composables/useToast'
-import { normalizeOpenStackTerms, type TermMapping } from '@/utils/openstackTerms'
 
 function createId(): string {
   return crypto.randomUUID()
@@ -14,7 +13,6 @@ export const useMeetingStore = defineStore('meeting', () => {
   const analysis = ref<MeetingAnalysis | null>(null)
   const error = ref<string | null>(null)
   const checkedDecisions = ref<Record<number, boolean>>({})
-  const termMappings = ref<TermMapping[]>([])
   const scrollToResults = ref(false)
 
   const { running, pipeline, useOfflineMode, currentStepLabel, runPipeline } =
@@ -33,7 +31,6 @@ export const useMeetingStore = defineStore('meeting', () => {
     )
     if (exists) return
     keywords.value.push({ id: createId(), text: trimmed })
-    termMappings.value = normalizeOpenStackTerms(keywordTexts.value)
   }
 
   function addKeywordsFromText(raw: string) {
@@ -46,7 +43,6 @@ export const useMeetingStore = defineStore('meeting', () => {
 
   function removeKeyword(id: string) {
     keywords.value = keywords.value.filter((k) => k.id !== id)
-    termMappings.value = normalizeOpenStackTerms(keywordTexts.value)
   }
 
   function clearKeywords() {
@@ -54,7 +50,6 @@ export const useMeetingStore = defineStore('meeting', () => {
     analysis.value = null
     error.value = null
     checkedDecisions.value = {}
-    termMappings.value = []
   }
 
   function toggleDecision(index: number) {
@@ -124,7 +119,6 @@ export const useMeetingStore = defineStore('meeting', () => {
     analysis,
     error,
     checkedDecisions,
-    termMappings,
     scrollToResults,
     running,
     pipeline,

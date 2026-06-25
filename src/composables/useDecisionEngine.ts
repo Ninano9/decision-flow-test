@@ -4,9 +4,7 @@ import { analyzeDecisions } from '@/agents/decisionAnalyzer'
 import { recommendFramework } from '@/agents/frameworkAgent'
 import { generateActions } from '@/agents/actionAgent'
 import { analyzeMeetingUnified } from '@/agents/meetingOrchestrator'
-import { sanitizeList } from '@/services/outputGuard'
-import { refineActions } from '@/utils/actionPlanner'
-import { refineDecisions, refineTopics } from '@/utils/meetingContentPlanner'
+import { pickActions, pickDecisions, pickTopics } from '@/utils/meetingContentPlanner'
 import { buildPriorities } from '@/utils/priorityEngine'
 import type { AgentPipelineStep, MeetingAnalysis } from '@/types/meeting'
 
@@ -47,32 +45,17 @@ export function useDecisionEngine() {
     currentStepLabel.value = ''
   }
 
-  function finalizeAnalysis(
+  async function finalizeAnalysis(
     keywords: string[],
     partial: Omit<MeetingAnalysis, 'priorities'> & { priorities?: MeetingAnalysis['priorities'] },
-  ): MeetingAnalysis {
-    const topics = refineTopics(
-      sanitizeList(partial.topics, keywords, [], 'relaxed'),
-      keywords,
-    )
-    const decisions = refineDecisions(
-      sanitizeList(partial.decisions, keywords, topics, 'relaxed'),
-      keywords,
-      topics,
-    )
-    const actions = refineActions(
-      sanitizeList(partial.actions, keywords, topics, 'relaxed'),
-      keywords,
-      topics,
-    )
-
+  ): Promise<MeetingAnalysis> {
     return {
-      topics,
-      decisions,
+      topics: pickTopics(partial.topics, keywords),
+      decisions: pickDecisions(partial.decisions, keywords),
+      actions: pickActions(partial.actions, keywords),
       framework: partial.framework,
       frameworkReason: partial.frameworkReason,
-      actions: actions.length ? actions : refineActions([], keywords, topics),
-      priorities: partial.priorities ?? buildPriorities(keywords, topics),
+      priorities: partial.priorities ?? buildPriorities(keywords, partial.topics),
     }
   }
 

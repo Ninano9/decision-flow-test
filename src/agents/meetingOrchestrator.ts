@@ -1,11 +1,9 @@
 import { chatCompletion, SYSTEM_PROMPT } from '@/services/mistralService'
-import { sanitizeList } from '@/services/outputGuard'
-import { refineActions } from '@/utils/actionPlanner'
-import { refineDecisions, refineTopics } from '@/utils/meetingContentPlanner'
+import { pickActions, pickDecisions, pickTopics } from '@/utils/meetingContentPlanner'
 import { buildPriorities } from '@/utils/priorityEngine'
-import { recommendFramework } from '@/agents/frameworkAgent'
+import { parseFrameworkFromText, recommendFramework } from '@/agents/frameworkAgent'
 import type { MeetingAnalysis, PriorityItem } from '@/types/meeting'
-import { STRICT_AGENT_RULES, ACTION_PROMPT_RULES } from '@/agents/promptConstants'
+import { ANALYSIS_PROMPT_RULES } from '@/agents/promptConstants'
 
 interface UnifiedResponse {
   topics?: string[]
@@ -24,47 +22,42 @@ export async function analyzeMeetingUnified(
   try {
     const content = await chatCompletion({
       messages: [
-        { role: 'system', content: `${SYSTEM_PROMPT}\n${STRICT_AGENT_RULES}\n${ACTION_PROMPT_RULES}` },
+        { role: 'system', content: `${SYSTEM_PROMPT}\n${ANALYSIS_PROMPT_RULES}` },
         {
           role: 'user',
-          content: `아래 키워드 **각각**에 대해 서로 다른 분석을 작성하세요. 키워드 문자열을 topics/decisions/actions에 반드시 포함.
+          content: `아래 키워드의 **실제 맥락**을 파악해 회의 의사결정을 돕는 분석을 작성하세요.
+기술 회의가 아니면 일상·기획·조직 등 해당 맥락에 맞게 작성하세요.
 
-키워드 (${keywords.length}개):
+키워드:
 ${keywords.map((k, i) => `${i + 1}. ${k}`).join('\n')}
 
 JSON만:
 {
-  "topics":["핵심논의1"],
-  "decisions":["결정항목1"],
-  "framework":"긴급도 × 영향도",
-  "frameworkReason":"한 줄",
-  "actions":["nova-compute 로그에서 spawn 지연 구간 측정"],
+  "topics":["맥락에 맞는 핵심 논의"],
+  "decisions":["결정해야 할 항목"],
+  "framework":"장단점 비교",
+  "frameworkReason":"왜 이 방식인지 한 줄",
+  "actions":["실행 가능한 다음 액션"],
   "priorities":[{"label":"항목","level":"high","reason":"이유"}]
 }`,
         },
       ],
-      temperature: 0.35,
-      maxTokens: 1200,
+      temperature: 0.45,
+      maxTokens: 1400,
     })
 
     const parsed = parseUnified(content)
     if (!parsed) return null
 
-    const keywordFramework = await recommendFramework(keywords, parsed.topics)
-    const topics = refineTopics(
-      sanitizeList(parsed.topics, keywords, [], 'relaxed'),
-      keywords,
-    )
-    const decisions = refineDecisions(
-      sanitizeList(parsed.decisions, keywords, topics, 'relaxed'),
-      keywords,
-      topics,
-    )
-    const actions = refineActions(
-      sanitizeList(parsed.actions, keywords, topics, 'relaxed'),
-      keywords,
-      topics,
-    )
+    const topics = pickTopics(parsed.topics, keywords)
+    const decisions = pickDecisions(parsed.decisions, keywords)
+    const actions = pickActions(parsed.actions, keywords)
+
+    const fromAi = parseFrameworkFromText(parsed.frameworkRaw)
+    const frameworkInfo =
+      fromAi && parsed.frameworkReason
+        ? { framework: fromAi.framework, reason: parsed.frameworkReason }
+        : fromAi ?? (await recommendFramework(keywords, topics))
 
     const priorities: PriorityItem[] =
       parsed.priorities.length > 0
@@ -72,11 +65,11 @@ JSON만:
         : buildPriorities(keywords, topics)
 
     return {
-      topics: topics.length ? topics : refineTopics([], keywords),
-      decisions: decisions.length ? decisions : refineDecisions([], keywords, topics),
-      framework: keywordFramework.framework,
-      frameworkReason: keywordFramework.reason,
-      actions: actions.length ? actions : refineActions([], keywords, topics),
+      topics,
+      decisions,
+      framework: frameworkInfo.framework,
+      frameworkReason: parsed.frameworkReason || frameworkInfo.reason,
+      actions,
       priorities,
     }
   } catch {
@@ -89,6 +82,8 @@ function parseUnified(content: string): {
   decisions: string[]
   actions: string[]
   priorities: PriorityItem[]
+  frameworkRaw?: string
+  frameworkReason?: string
 } | null {
   try {
     const jsonMatch = content.match(/\{[\s\S]*\}/)
@@ -109,7 +104,7 @@ function parseUnified(content: string): {
       .map((p) => ({
         label: p.label,
         level: levelMap[p.level?.toLowerCase() ?? ''] ?? 'medium',
-        reason: p.reason?.slice(0, 80) ?? '',
+        reason: p.reason?.slice(0, 100) ?? '',
       }))
 
     return {
@@ -117,6 +112,8 @@ function parseUnified(content: string): {
       decisions: raw.decisions ?? [],
       actions: raw.actions ?? [],
       priorities,
+      frameworkRaw: raw.framework,
+      frameworkReason: raw.frameworkReason,
     }
   } catch {
     return null

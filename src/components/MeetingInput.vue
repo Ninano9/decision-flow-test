@@ -32,7 +32,7 @@ function onClear() {
     <textarea
       v-model="input"
       rows="4"
-      placeholder="키워드를 입력하세요(예: vm생성 느림, cpu 메모리)"
+      placeholder="키워드를 입력하세요(예: 출시 일정, 예산, 점심 메뉴)"
       class="w-full resize-none rounded-xl border border-slate-600 bg-slate-950 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
     />
 
