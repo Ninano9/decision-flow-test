@@ -27,10 +27,10 @@ export async function analyzeMeetingUnified(
         { role: 'system', content: `${SYSTEM_PROMPT}\n${STRICT_AGENT_RULES}\n${ACTION_PROMPT_RULES}` },
         {
           role: 'user',
-          content: `회의 키워드로 분석하세요. 액션은 OpenStack 운영자가 즉시 수행할 구체 단계로 작성 (~관련 확인 금지).
+          content: `아래 키워드 **각각**에 대해 서로 다른 분석을 작성하세요. 키워드 문자열을 topics/decisions/actions에 반드시 포함.
 
-키워드:
-${keywords.join('\n')}
+키워드 (${keywords.length}개):
+${keywords.map((k, i) => `${i + 1}. ${k}`).join('\n')}
 
 JSON만:
 {
@@ -43,7 +43,7 @@ JSON만:
 }`,
         },
       ],
-      temperature: 0.1,
+      temperature: 0.35,
       maxTokens: 1200,
     })
 

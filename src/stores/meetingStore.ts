@@ -8,13 +8,6 @@ import { findSimilarMeetings } from '@/agents/memoryAgent'
 import { buildPriorities } from '@/utils/priorityEngine'
 import { normalizeOpenStackTerms, type TermMapping } from '@/utils/openstackTerms'
 
-const SAMPLE_KEYWORDS = [
-  'VM 생성 느림',
-  'CPU 증가',
-  'Nova',
-  '사용자 불만',
-]
-
 function createId(): string {
   return crypto.randomUUID()
 }
@@ -75,11 +68,7 @@ export const useMeetingStore = defineStore('meeting', () => {
     error.value = null
     checkedDecisions.value = {}
     termMappings.value = []
-  }
-
-  function loadSampleKeywords() {
-    clearKeywords()
-    SAMPLE_KEYWORDS.forEach(addKeyword)
+    meetingTitle.value = ''
   }
 
   function toggleDecision(index: number) {
@@ -218,7 +207,6 @@ export const useMeetingStore = defineStore('meeting', () => {
     addKeywordsFromText,
     removeKeyword,
     clearKeywords,
-    loadSampleKeywords,
     toggleDecision,
     analyze,
     copySummary,

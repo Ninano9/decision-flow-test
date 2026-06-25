@@ -105,8 +105,7 @@ watch(
           v-else
           class="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 p-8 text-center text-slate-500"
         >
-          키워드를 입력하고 「의사결정 분석」을 실행하세요.<br />
-          <span class="mt-2 inline-block text-xs">「예시 불러오기」로 빠르게 체험할 수 있습니다.</span>
+          키워드를 입력하고 「의사결정 분석」을 실행하세요.
         </div>
       </div>
     </div>

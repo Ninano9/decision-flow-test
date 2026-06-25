@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useMeetingStore } from '@/stores/meetingStore'
 
 const store = useMeetingStore()
 const input = ref('')
+
+const canAnalyze = computed(
+  () => store.hasKeywords || input.value.trim().length > 0,
+)
 
 function onEnter() {
   if (!input.value.trim()) return
@@ -18,24 +22,28 @@ function onPaste(event: ClipboardEvent) {
     store.addKeywordsFromText(text)
   }
 }
+
+function onAnalyze() {
+  if (input.value.trim()) {
+    store.addKeywordsFromText(input.value)
+    input.value = ''
+  }
+  store.analyze()
+}
+
+function onClear() {
+  input.value = ''
+  store.clearKeywords()
+}
 </script>
 
 <template>
   <section class="rounded-2xl border border-slate-700/80 bg-slate-900/80 p-5 shadow-lg">
-    <header class="mb-4 flex flex-wrap items-start justify-between gap-2">
-      <div>
-        <h2 class="text-lg font-semibold text-white">회의 키워드 입력</h2>
-        <p class="mt-1 text-sm text-slate-400">
-          Enter로 태그 생성 · 콤마/여러 줄 붙여넣기 지원
-        </p>
-      </div>
-      <button
-        type="button"
-        class="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
-        @click="store.loadSampleKeywords"
-      >
-        예시 불러오기
-      </button>
+    <header class="mb-4">
+      <h2 class="text-lg font-semibold text-white">회의 키워드 입력</h2>
+      <p class="mt-1 text-sm text-slate-400">
+        Enter 또는 「의사결정 분석」으로 입력 · 콤마/여러 줄 붙여넣기 지원
+      </p>
     </header>
 
     <p
@@ -71,14 +79,14 @@ function onPaste(event: ClipboardEvent) {
         </button>
       </span>
       <span v-if="!store.keywords.length" class="text-sm text-slate-500">
-        예: VM 생성 느림, CPU 증가, Nova, 사용자 불만
+        키워드를 입력하세요 (Enter 없이 분석 버튼만 눌러도 됩니다)
       </span>
     </div>
 
     <textarea
       v-model="input"
       rows="3"
-      placeholder="키워드를 입력하고 Enter를 누르세요"
+      placeholder="예: vm생성 느림, cpu 메모리"
       class="w-full resize-none rounded-xl border border-slate-600 bg-slate-950 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
       @keydown.enter.exact.prevent="onEnter"
       @paste="onPaste"
@@ -88,15 +96,15 @@ function onPaste(event: ClipboardEvent) {
       <button
         type="button"
         class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-        :disabled="!store.hasKeywords || store.running"
-        @click="store.analyze"
+        :disabled="!canAnalyze || store.running"
+        @click="onAnalyze"
       >
         {{ store.running ? '분석 중…' : '의사결정 분석' }}
       </button>
       <button
         type="button"
         class="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
-        @click="store.clearKeywords"
+        @click="onClear"
       >
         초기화
       </button>
