@@ -5,29 +5,12 @@ import { useMeetingStore } from '@/stores/meetingStore'
 const store = useMeetingStore()
 const input = ref('')
 
-const canAnalyze = computed(
-  () => store.hasKeywords || input.value.trim().length > 0,
-)
-
-function onEnter() {
-  if (!input.value.trim()) return
-  store.addKeywordsFromText(input.value)
-  input.value = ''
-}
-
-function onPaste(event: ClipboardEvent) {
-  const text = event.clipboardData?.getData('text')
-  if (text?.includes('\n') || text?.includes(',')) {
-    event.preventDefault()
-    store.addKeywordsFromText(text)
-  }
-}
+const canAnalyze = computed(() => input.value.trim().length > 0)
 
 function onAnalyze() {
-  if (input.value.trim()) {
-    store.addKeywordsFromText(input.value)
-    input.value = ''
-  }
+  if (!input.value.trim()) return
+  store.clearKeywords()
+  store.addKeywordsFromText(input.value)
   store.analyze()
 }
 
@@ -42,54 +25,15 @@ function onClear() {
     <header class="mb-4">
       <h2 class="text-lg font-semibold text-white">회의 키워드 입력</h2>
       <p class="mt-1 text-sm text-slate-400">
-        Enter 또는 「의사결정 분석」으로 입력 · 콤마/여러 줄 붙여넣기 지원
+        콤마 또는 줄바꿈으로 여러 키워드 입력 · 「의사결정 분석」 클릭
       </p>
     </header>
 
-    <p
-      v-if="store.termMappings.length"
-      class="mb-2 text-xs text-slate-500"
-    >
-      OpenStack 용어:
-      <span
-        v-for="m in store.termMappings"
-        :key="m.original"
-        class="mr-2 text-brand-100/90"
-      >
-        {{ m.original }} → {{ m.standard }}
-      </span>
-    </p>
-
-    <div
-      class="mb-3 flex min-h-[120px] flex-wrap gap-2 rounded-xl border border-slate-600 bg-slate-950/60 p-3"
-    >
-      <span
-        v-for="kw in store.keywords"
-        :key="kw.id"
-        class="inline-flex items-center gap-1 rounded-full bg-brand-600/20 px-3 py-1 text-sm text-brand-100 ring-1 ring-brand-500/40"
-      >
-        {{ kw.text }}
-        <button
-          type="button"
-          class="ml-1 text-slate-400 hover:text-white"
-          aria-label="키워드 삭제"
-          @click="store.removeKeyword(kw.id)"
-        >
-          ×
-        </button>
-      </span>
-      <span v-if="!store.keywords.length" class="text-sm text-slate-500">
-        키워드를 입력하세요 (Enter 없이 분석 버튼만 눌러도 됩니다)
-      </span>
-    </div>
-
     <textarea
       v-model="input"
-      rows="3"
-      placeholder="예: vm생성 느림, cpu 메모리"
+      rows="4"
+      placeholder="키워드를 입력하세요(예: vm생성 느림, cpu 메모리)"
       class="w-full resize-none rounded-xl border border-slate-600 bg-slate-950 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-      @keydown.enter.exact.prevent="onEnter"
-      @paste="onPaste"
     />
 
     <div class="mt-4 flex flex-wrap gap-2">
